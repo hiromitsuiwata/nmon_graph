@@ -9,7 +9,7 @@ month_map = {"JAN": "01", "FEB": "02", "MAR": "03", "APR": "04", "MAY": "05", "J
              "JUL": "07", "AUG": "08", "SEP": "09", "OCT": "10", "NOV": "11", "DEC": "12"}
 
 
-def filter_nmon(filepath, str, remove_first_line):
+def read_nmon(filepath, str, remove_first_line):
     length = len(str) + 1
     with open(filepath) as f:
         lines = f.readlines()
@@ -29,7 +29,7 @@ def lines_to_df(lines, names):
     return df
 
 
-def lines_to_datetime(lines):
+def lines_to_df_datetime(lines):
     datetime_lines = []
     for line in lines:
         split = line.split(',')
@@ -54,21 +54,32 @@ if __name__ == '__main__':
     filepath = args.filepath
     print(filepath)
 
-    df_cpu_all = lines_to_df(filter_nmon(filepath, "CPU_ALL", True), [
+    df_cpu_all = lines_to_df(read_nmon(filepath, "CPU_ALL", True), [
                              "time", "User%", "Sys%", "Wait%", "Idle%", "Steal%", "Busy", "CPUs"])
-    df_memory = lines_to_df(filter_nmon(filepath, "MEM", True), [
+    df_memory = lines_to_df(read_nmon(filepath, "MEM", True), [
         "time", "memtotal", "hightotal", "lowtotal", "swaptotal", "memfree", "highfree", "lowfree", "swapfree", "memshared", "cached", "active", "bigfree", "buffers", "swapcached", "inactive"])
-    df_datetime = lines_to_datetime(filter_nmon(filepath, "ZZZZ", False))
+    df_datetime = lines_to_df_datetime(read_nmon(filepath, "ZZZZ", False))
 
     df = pd.concat([df_datetime, df_cpu_all, df_memory], axis=1)
     df = df.set_index(0)
     print(df)
 
-    fig, ax = plt.subplots()
-    plt.xticks(rotation=90)
-    ax.stackplot(df.index, df['User%'], df['Sys%'],
-                 df['Wait%'], labels=['User%', 'Sys%', 'Wait%'])
-    plt.legend(loc='upper right')
-    ax.set_xlabel('Datetime')
-    ax.set_ylabel('CPU%')
+    fig, ax = plt.subplots(1, 2, tight_layout=False, figsize=(12.0, 6.0))
+    fig.subplots_adjust(bottom=0.2)
+
+    ax[0].tick_params(axis="x", labelrotation=45)
+    ax[1].tick_params(axis="x", labelrotation=45)
+
+    ax[0].grid(True)
+    ax[1].grid(True)
+    ax[0].stackplot(df.index, df['User%'], df['Sys%'],
+                    df['Wait%'], labels=['User%', 'Sys%', 'Wait%'])
+    ax[1].plot(df.index, df['memfree'], label='memfree')
+    ax[1].plot(df.index, df['memtotal'], label='memtotal')
+    ax[0].legend(loc='upper right')
+    ax[1].legend(loc='upper right')
+
+    ax[0].set_ylabel('CPU%')
+    ax[1].set_ylabel('MEM(MB)')
+
     plt.show()
